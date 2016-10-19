@@ -17,7 +17,11 @@ cache:
 
 matrix:
     include:
+        - os: osx
+          env: UTEST=true COMPILER=g++-6
+
         - os: linux
+          dist: trusty
           env: UTEST=true COMPILER=g++-6
 
 install:
