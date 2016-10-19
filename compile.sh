@@ -11,6 +11,8 @@ else
     Comp=$COMPILER
 fi
 
+LLVM="$LLVM_DIR/install"
+
 VER="CMAKE_NO_VERBOSE=1"
 
 ResultFile="last"
@@ -39,7 +41,7 @@ if [ "$CLE" == "true" ]; then
     rm -rf build/
 fi
 
-mkdir -p build && pushd build && cmake -DCMAKE_CXX_COMPILER="$Comp" .. && make $VER "-j$JOBS" && popd
+mkdir -p build && pushd build && cmake -DCMAKE_PREFIX_PATH="$LLVM" -DCMAKE_CXX_COMPILER="$Comp" .. && make $VER "-j$JOBS" && popd
 if [ ! -f build/koon ]; then
     exit
 fi
