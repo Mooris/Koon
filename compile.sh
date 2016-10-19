@@ -12,7 +12,7 @@ else
 fi
 
 LLVM="$LLVM_DIR/install"
-BISON="${BISON_DIR}/install"
+BISON="${BISON_DIR}/leinstall"
 
 VER="CMAKE_NO_VERBOSE=1"
 
