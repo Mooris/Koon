@@ -1,0 +1,17 @@
+language: c++
+sudo: false
+
+addons:
+    apt:
+        packages:
+            - g++-6
+            - llvm-3.8-dev
+            - flex
+            - bison
+        sources: &sources
+            - ubuntu-toolchain-r-test
+
+matrix:
+    include:
+        - os: linux
+          env: UTEST=true
