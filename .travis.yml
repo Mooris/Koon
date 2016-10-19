@@ -11,6 +11,10 @@ addons:
         sources: &sources
             - ubuntu-toolchain-r-test
 
+cache:
+    directories:
+        - ${TRAVIS_BUILD_DIR}/deps/llvm-3.8.0
+
 matrix:
     include:
         - os: linux
@@ -19,7 +23,7 @@ matrix:
 install:
     - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
     - export LLVM_DIR=${DEPS_DIR}/llvm-${LLVM_VERSION}
-    - mkdir -p ${DEPS_DIR} && cd ${DEPS_DIR}
+    - mkdir -p ${DEPS_DIR} && pushd ${DEPS_DIR}
     - LLVM_VERSION=3.8.0
 
     - |
@@ -31,7 +35,9 @@ install:
       LLVM_URL="http://llvm.org/releases/${LLVM_VERSION}/llvm-${LLVM_VERSION}.src.tar.xz"
       mkdir -p ${LLVM_DIR} ${LLVM_DIR}/build
       travis_retry wget --quiet -O - ${LLVM_URL}      | tar --strip-components=1 -xJ -C ${LLVM_DIR}
-      (cd ${LLVM_DIR}/build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${LLVM_DIR}/install -DCMAKE_CXX_COMPILER=$COMPILER && make -j2 && make install)
+      (pushd ${LLVM_DIR}/build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${LLVM_DIR}/install -DCMAKE_CXX_COMPILER=$COMPILER && make -j2 && make install && popd)
+
+    - popd
 
 script:
     ${TRAVIS_BUILD_DIR}/compile.sh

@@ -70,12 +70,10 @@ int KoonDriver::output() const {
             "elf_x86_64",
             "-dynamic-linker",
             "/lib64/ld-linux-x86-64.so.2",
-            "/usr/lib/gcc/x86_64-pc-linux-gnu/6.2.1/../../../../lib/crt1.o",
-            "/usr/lib/gcc/x86_64-pc-linux-gnu/6.2.1/../../../../lib/crti.o",
+            "/usr/lib/crt1.o",
+            "/usr/lib/crti.o",
             "/usr/lib/gcc/x86_64-pc-linux-gnu/6.2.1/crtbegin.o",
             "-L/usr/lib/gcc/x86_64-pc-linux-gnu/6.2.1",
-            "-L/usr/lib/gcc/x86_64-pc-linux-gnu/6.2.1/../../../../lib",
-            "-L/lib/../lib",
             "-L/usr/lib",
             object.c_str(),
             "-lgcc",
@@ -88,7 +86,7 @@ int KoonDriver::output() const {
             "-lgcc_s",
             "--no-as-needed",
             "/usr/lib/gcc/x86_64-pc-linux-gnu/6.2.1/crtend.o",
-            "/usr/lib/gcc/x86_64-pc-linux-gnu/6.2.1/../../../../lib/crtn.o",
+            "/usr/lib/crtn.o",
             "-o",
             OutputFilename.c_str());
 
