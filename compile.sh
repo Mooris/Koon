@@ -23,7 +23,7 @@ while [[ $# > 0 ]]; do
             JOBS=$2
         ;;
         -t|--test)
-            TEST="true"
+            UNIT_TEST="true"
         ;;
     esac
     shift
@@ -38,7 +38,7 @@ if [ ! -f build/koon ]; then
     exit
 fi
 
-if [ "$TEST" != "true" ]; then
+if [ "$UNIT_TEST" != "true" ]; then
     exit
 fi
 mkdir -p "test" && cp "build/koon" "test/koon" && pushd "test"

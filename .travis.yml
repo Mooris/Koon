@@ -5,7 +5,7 @@ addons:
     apt:
         packages:
             - g++-6
-            - llvm-3.8-dev
+            - llvm-dev
             - flex
             - bison
         sources: &sources
@@ -15,3 +15,6 @@ matrix:
     include:
         - os: linux
           env: UTEST=true
+
+script:
+    ./compile.sh
