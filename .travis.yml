@@ -24,6 +24,9 @@ matrix:
         - os: linux
           env: UNIT_TEST=true COMPILER=g++-6
 
+before_install:
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install gcc6; fi
+
 install:
     - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
     - LLVM_VERSION=3.8.0
