@@ -22,9 +22,9 @@ matrix:
 
 install:
     - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
+    - LLVM_VERSION=3.8.0
     - export LLVM_DIR=${DEPS_DIR}/llvm-${LLVM_VERSION}
     - mkdir -p ${DEPS_DIR} && pushd ${DEPS_DIR}
-    - LLVM_VERSION=3.8.0
 
     - |
       CMAKE_URL="http://www.cmake.org/files/v3.5/cmake-3.5.2-Linux-x86_64.tar.gz"
