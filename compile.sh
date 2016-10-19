@@ -4,6 +4,12 @@ RED='\033[1;31m'
 GREEN='\033[1;32m'
 NC='\033[0m'
 
+Comp=""
+if [ -z "$COMPILER" ]; then
+    Comp="/usr/bin/c++"
+else
+    Comp=$COMPILER
+fi
 
 VER="CMAKE_NO_VERBOSE=1"
 
@@ -33,7 +39,7 @@ if [ "$CLE" == "true" ]; then
     rm -rf build/
 fi
 
-mkdir -p build && pushd build && cmake .. && make $VER "-j$JOBS" && popd
+mkdir -p build && pushd build && cmake -DCMAKE_CXX_COMPILER="$Comp" .. && make $VER "-j$JOBS" && popd
 if [ ! -f build/koon ]; then
     exit
 fi

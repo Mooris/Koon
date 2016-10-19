@@ -14,7 +14,20 @@ addons:
 matrix:
     include:
         - os: linux
-          env: UTEST=true
+          env: UTEST=true COMPILER=g++-6
+
+install:
+    - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
+    - LLVM_DIR=${DEPS_DIR}/llvm-${LLVM_VERSION}
+    - mkdir -p ${DEPS_DIR} && cd ${DEPS_DIR}
+    - LLVM_VERSION=3.8.0
+
+    - |
+      LLVM_URL="http://llvm.org/releases/${LLVM_VERSION}/llvm-${LLVM_VERSION}.src.tar.xz"
+      mkdir -p ${LLVM_DIR} ${LLVM_DIR}/build
+      travis_retry wget --quiet -O - ${LLVM_URL}      | tar --strip-components=1 -xJ -C ${LLVM_DIR}
+      (cd ${LLVM_DIR}/build && cmake .. -DCMAKE_INSTALL_PREFIX=${LLVM_DIR}/install -DCMAKE_CXX_COMPILER=$COMPILER)
+      make install -j2
 
 script:
-    ./compile.sh
+    ${TRAVIS_BUILD_DIR}/compile.sh
