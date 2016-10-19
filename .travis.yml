@@ -38,8 +38,9 @@ install:
 
     - |
       BISON_URL="http://ftp.gnu.org/gnu/bison/bison-3.0.4.tar.xz"
-      mkdir -p ${BISON_DIR} ${BISON_DIR}/install
+      mkdir -p ${BISON_DIR}
       travis_retry wget --quiet -O - ${BISON_URL}      | tar --strip-components=1 -xJ -C ${BISON_DIR}
+      mkdir -p ${BISON_DIR}/install
       (pushd ${BISON_DIR} && ./configure --prefix="${BISON_DIR}/install" && make && make install && popd)
 
 
@@ -47,9 +48,8 @@ install:
       LLVM_URL="http://llvm.org/releases/${LLVM_VERSION}/llvm-${LLVM_VERSION}.src.tar.xz"
       mkdir -p ${LLVM_DIR} ${LLVM_DIR}/build
       travis_retry wget --quiet -O - ${LLVM_URL}      | tar --strip-components=1 -xJ -C ${LLVM_DIR}
-      (pushd ${LLVM_DIR}/build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${LLVM_DIR}/install -DCMAKE_CXX_COMPILER=$COMPILER && make -j2 && make install && popd)
-
+      (pushd ${LLVM_DIR}/build && cmake .. -DLLVM_ENABLE_RTTI=true -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${LLVM_DIR}/install -DCMAKE_CXX_COMPILER=$COMPILER && make -j2 && make install && popd)
     - popd
 
 script:
-    ${TRAVIS_BUILD_DIR}/compile.sh
+    ${TRAVIS_BUILD_DIR}/compile.sh -c
