@@ -13,6 +13,7 @@ addons:
 
 cache:
     directories:
+        - ${TRAVIS_BUILD_DIR}/deps/bison-3.0.4
         - ${TRAVIS_BUILD_DIR}/deps/llvm-3.8.0
 
 matrix:
@@ -21,19 +22,26 @@ matrix:
           env: UTEST=true COMPILER=g++-6
 
         - os: linux
-          dist: trusty
           env: UTEST=true COMPILER=g++-6
 
 install:
     - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
     - LLVM_VERSION=3.8.0
     - export LLVM_DIR=${DEPS_DIR}/llvm-${LLVM_VERSION}
+    - export BISON_DIR=${DEPS_DIR}/bison-3.0.4
     - mkdir -p ${DEPS_DIR} && pushd ${DEPS_DIR}
 
     - |
       CMAKE_URL="http://www.cmake.org/files/v3.5/cmake-3.5.2-Linux-x86_64.tar.gz"
       mkdir cmake && travis_retry wget --no-check-certificate --quiet -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C cmake
       export PATH=${DEPS_DIR}/cmake/bin:${PATH}
+
+    - |
+      BISON_URL="http://ftp.gnu.org/gnu/bison/bison-3.0.4.tar.xz"
+      mkdir -p ${BISON_DIR} ${BISON_DIR}/install
+      travis_retry wget --quiet -O - ${BISON_URL}      | tar --strip-components=1 -xJ -C ${BISON_DIR}
+      (pushd ${BISON_DIR} && ./configure --prefix="${BISON_DIR}/install" && make && make install && popd)
+
 
     - |
       LLVM_URL="http://llvm.org/releases/${LLVM_VERSION}/llvm-${LLVM_VERSION}.src.tar.xz"
