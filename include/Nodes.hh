@@ -8,14 +8,16 @@ class KStatement;
 class KFuncDecl;
 class KArg;
 class KCallArg;
+class KObjField;
 
 using StatementList = std::vector<std::shared_ptr<KStatement>>;
-using KFuncList = std::vector<KFuncDecl>;
+using KTopLevel = std::vector<std::shared_ptr<KStatement>>;
+using KObjFieldList = std::vector<std::shared_ptr<KObjField>>;
 using KArgList = std::vector<KArg>;
 using KCallArgList = std::vector<KCallArg>;
 
 class Kontext;
-namespace llvm { class Value; class Type; class Module; }
+namespace llvm { class Value; class Type; class Module; class Function; }
 
 using ValuePtr = llvm::Value *;
 
@@ -28,6 +30,7 @@ public:
 class KExpression: public KNode {
 public:
     virtual llvm::Type *getType(Kontext &) = 0;
+    virtual bool isAssignable() = 0;
 };
 
 class KStatement: public KNode {};
@@ -42,6 +45,7 @@ public:
     virtual ValuePtr codeGen(Kontext &);
     virtual llvm::Type *getType(Kontext &);
 
+    virtual inline bool isAssignable() { return false; }
 private:
     int _inner;
 };
@@ -71,59 +75,45 @@ private:
     std::shared_ptr<KExpression>     _expr;
 };
 
-class KIdentifier: public KExpression {
+#include "KIdentifier.hh"
+
+class KOperator: public KExpression {
 public:
-    KIdentifier() : _name("anon") {}
-    KIdentifier(std::string &&name): _name(std::move(name)) {}
+    enum class Type {
+        Mul,
+        Div,
+        Add,
+        Sub,
+        Dot,
+        Equal
+    };
+    virtual ~KOperator() {}
 
-    inline std::string getName() const { return _name; }
-    virtual ValuePtr codeGen(Kontext &);
-    virtual llvm::Type *getType(Kontext &);
+    /* For bison */
+    virtual ValuePtr codeGen(Kontext &) { return nullptr; }
+    virtual llvm::Type* getType(Kontext &) { return nullptr; }
 
-private:
-    std::string _name;
+    virtual inline bool isAssignable() { return false; }
 };
 
-class KAssignment: public KExpression {
+class KBinaryOperator: public KOperator {
 public:
-    KAssignment(KIdentifier lhs, std::shared_ptr<KExpression> rhs)
-        : _lhs(std::move(lhs)), _rhs(std::move(rhs)) {}
+    KBinaryOperator(std::shared_ptr<KExpression> lhs,
+                    std::shared_ptr<KExpression> rhs,
+                    Type type)
+        : _lhs(std::move(lhs)), _rhs(std::move(rhs)), _type(type) {}
+    virtual ~KBinaryOperator() {}
 
+public:
     virtual ValuePtr codeGen(Kontext &);
     virtual llvm::Type* getType(Kontext &);
 
+    virtual bool isAssignable();
+
 private:
-    KIdentifier                     _lhs;
+    std::shared_ptr<KExpression>    _lhs;
     std::shared_ptr<KExpression>    _rhs;
-};
-
-class KVarDecl: public KStatement {
-public:
-    KVarDecl() : _name("broken"), _type(nullptr), _expr(nullptr) {}
-    KVarDecl(KIdentifier &&name, std::shared_ptr<KExpression> &&expr)
-        :   _name(std::move(name)),
-            _type(nullptr),
-            _expr(std::move(expr)) {}
-
-    KVarDecl(KIdentifier &&name, std::string &&te)
-        :   _name(std::move(name)),
-            _type(std::make_shared<std::string>(std::move(te))),
-            _expr(nullptr) {}
-
-    KVarDecl(KIdentifier &&name, std::string &&type, std::shared_ptr<KExpression> &&expr)
-        :   _name(std::move(name)),
-            _type(std::make_shared<std::string>(std::move(type))),
-            _expr(std::move(expr)) {}
-
-    virtual ~KVarDecl() {}
-
-public:
-    virtual ValuePtr codeGen(Kontext &);
-
-private:
-    KIdentifier                     _name;
-    std::shared_ptr<std::string>    _type;
-    std::shared_ptr<KExpression>    _expr;
+    Type                            _type;
 };
 
 class KBlock: public KNode {
@@ -141,6 +131,8 @@ private:
 };
 
 class KArg: public KNode {
+    friend class KFuncDecl;
+
 public:
     KArg() {}
     KArg(KIdentifier &&name, KIdentifier &&type)
@@ -161,45 +153,118 @@ private:
     KIdentifier _callname;
 };
 
-class KFuncDecl: public KStatement {
+class KCallArg: public KNode { /* TODO: May have undefined behavior */
 public:
-    KFuncDecl() {};
-    KFuncDecl(KIdentifier &&, KArgList &&, KBlock &&, llvm::Module*);
-    virtual ~KFuncDecl() {}
-
-    virtual ValuePtr codeGen(Kontext &);
-
-private:
-    KIdentifier     _type;
-    KArgList        _args;
-    KBlock          _block;
-};
-
-class KCallArg: public KNode {
-public:
-    KCallArg() : _name("Broken"), _expr(nullptr) {}
+    KCallArg() : _name("Broken"), _expr(nullptr), _value(nullptr) {}
     KCallArg(KIdentifier &&id, std::shared_ptr<KExpression> &&expr)
-        : _name(std::move(id)), _expr(std::move(expr)) {}
-
+        : _name(std::move(id)), _expr(std::move(expr)), _value(nullptr) {}
+    KCallArg(std::string name, llvm::Value *value)
+        : _name(std::move(name)), _expr(nullptr), _value(std::move(value)) {}
 public:
-    inline bool haveExpr() const { return _expr != nullptr; }
+    inline bool haveExpr() const { return (_expr != nullptr) || (_value != nullptr); }
     inline std::string getName() const { return _name.getName(); }
     virtual ValuePtr codeGen(Kontext&);
 
 private:
     KIdentifier     _name;
     std::shared_ptr<KExpression> _expr;
+    llvm::Value*    _value;
 };
 
 class KFuncCall: public KExpression {
 public:
-    KFuncCall(KIdentifier &&object, KCallArgList &&args)
+    KFuncCall(std::shared_ptr<KExpression> object, KCallArgList &&args)
         : _object(std::move(object)), _args(std::move(args)) {}
 public:
     virtual ValuePtr codeGen(Kontext&);
     virtual llvm::Type* getType(Kontext&);
 
+    virtual bool isAssignable();
+
 private:
-    KIdentifier         _object;
-    KCallArgList        _args;
+    std::shared_ptr<KExpression>    _object;
+    KCallArgList                    _args;
+};
+class KObject;
+class KObjField: public KStatement {
+public:
+    virtual bool isVariable() const = 0;
+    virtual void remangle(const KObject &) = 0;
+    virtual std::string getName() const = 0;
+    virtual std::shared_ptr<KExpression> getExpr() const {}
+    virtual llvm::Type *getType(Kontext &) { return nullptr; }
+    inline void setInObj() { this->_inObject = true; }
+
+protected:
+    bool _inObject = false;
+};
+
+class KVarDecl: public KObjField {
+public:
+    KVarDecl() : _name("broken"), _type(nullptr), _expr(nullptr) {}
+    KVarDecl(std::string &&name, std::shared_ptr<KExpression> &&expr)
+        :   _name(std::move(name)),
+            _type(nullptr),
+            _expr(std::move(expr)),
+            _ltype(nullptr),
+            _lvalue(nullptr) {}
+
+    KVarDecl(std::string &&name, std::string &&te)
+        :   _name(std::move(name)),
+            _type(std::make_shared<std::string>(std::move(te))),
+            _expr(nullptr),
+            _ltype(nullptr),
+            _lvalue(nullptr) {}
+
+    KVarDecl(std::string &&name, std::string &&type, std::shared_ptr<KExpression> &&expr)
+        :   _name(std::move(name)),
+            _type(std::make_shared<std::string>(std::move(type))),
+            _expr(std::move(expr)),
+            _ltype(nullptr),
+            _lvalue(nullptr) {}
+
+    KVarDecl(std::string name, llvm::Type *type, llvm::Value *v)
+        :   _name(std::move(name)),
+            _type(nullptr),
+            _expr(nullptr),
+            _ltype(type),
+            _lvalue(v) {}
+
+    virtual ~KVarDecl() {}
+
+public:
+    virtual ValuePtr codeGen(Kontext &);
+    virtual inline bool isVariable() const { return true; }
+    virtual inline std::shared_ptr<KExpression> getExpr() const { return _expr; }
+    virtual std::string getName() const { return _name; }
+    virtual void remangle(const KObject &) {}
+    virtual inline llvm::Type *getType(Kontext &);
+
+private:
+    std::string                     _name;
+    std::shared_ptr<std::string>    _type;
+    std::shared_ptr<KExpression>    _expr;
+
+    llvm::Type*                     _ltype;
+    llvm::Value*                    _lvalue;
+};
+
+#include "KFuncDecl.hh"
+
+class KObjectDecl: public KObjField {
+public:
+    KObjectDecl() : _name("Broken") {}
+    KObjectDecl(std::string &&, KObjFieldList &&, Kontext *);
+    virtual ~KObjectDecl() {}
+
+public:
+    virtual ValuePtr codeGen(Kontext &);
+    virtual bool isVariable() const { return false; };
+    virtual void remangle(const KObject &);
+    virtual std::string getName() const { return _name; }
+
+private:
+    std::string _name;
+    KObjFieldList   _stmts;
+    std::shared_ptr<KFuncDecl> _ctor = nullptr;
 };

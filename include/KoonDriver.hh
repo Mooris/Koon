@@ -24,6 +24,7 @@ public:
     inline void traceParsing() { this->trace_parsing = true; }
     inline void traceScanning() { this->trace_scanning = true; }
     inline llvm::Module *module() const { return this->_k.module(); }
+    inline Kontext *kontext() { return &this->_k; }
 
     void        scan_begin();
     void        scan_end();
@@ -35,7 +36,7 @@ public:
     int         output() const;
 
     //TMP
-    KFuncList   rootBlock;
+    KTopLevel   rootBlock;
 
 private:
     Kontext     _k;

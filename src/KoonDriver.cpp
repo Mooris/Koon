@@ -35,6 +35,7 @@ int KoonDriver::parse(const std::string &f)
     using namespace std;
 
     this->file = f;
+    this->_k.createBuiltins();
     scan_begin ();
     yy::KoonParser parser(*this);
     parser.set_debug_level(trace_parsing);
@@ -42,8 +43,8 @@ int KoonDriver::parse(const std::string &f)
     scan_end();
 
     if (!res) {
-        for (auto &func: this->rootBlock) {
-            func.codeGen(this->_k);
+        for (auto &topLevel: this->rootBlock) {
+            topLevel->codeGen(this->_k);
         }
         if (ShowAssembly) {
             llvm::PassManager<llvm::Module> pm;
@@ -70,23 +71,15 @@ int KoonDriver::output() const {
             "elf_x86_64",
             "-dynamic-linker",
             "/lib64/ld-linux-x86-64.so.2",
-            "/usr/lib/crt1.o",
-            "/usr/lib/crti.o",
-            "/usr/lib/gcc/x86_64-pc-linux-gnu/6.2.1/crtbegin.o",
-            "-L/usr/lib/gcc/x86_64-pc-linux-gnu/6.2.1",
+            "../krt/krt0.o",
+//            "-L/usr/lib/gcc/x86_64-pc-linux-gnu/6.2.1",
             "-L/usr/lib",
             object.c_str(),
-            "-lgcc",
-            "--as-needed",
-            "-lgcc_s",
-            "--no-as-needed",
+//            "-lgcc",
+//            "--as-needed",
+//            "-lgcc_s",
+//            "--no-as-needed",
             "-lc",
-            "-lgcc",
-            "--as-needed",
-            "-lgcc_s",
-            "--no-as-needed",
-            "/usr/lib/gcc/x86_64-pc-linux-gnu/6.2.1/crtend.o",
-            "/usr/lib/crtn.o",
             "-o",
             OutputFilename.c_str());
 

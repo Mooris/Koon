@@ -1,7 +1,12 @@
-decl main ac: int32 -> int32 {
-    return |TopLevel getReturnValue: 55|
+decl start -> Integer {
+    var toto: Toto
+    return |toto doStuff: 250|
 }
 
-decl getReturnValue lel: int32 -> int32 {
-    return lel
+class Toto {
+    var lol = 5
+
+    decl doStuff stuff: Integer -> Integer {
+        return lol + stuff
+    }
 }

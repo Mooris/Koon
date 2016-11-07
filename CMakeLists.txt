@@ -11,6 +11,8 @@ set(SRC_DIR src/)
 set(SRC ${SRC_DIR}main.cpp
     ${SRC_DIR}Nodes.cpp
     ${SRC_DIR}Kompiler.cpp
+    ${SRC_DIR}InstanciatedObject.cpp
+    ${SRC_DIR}Kontext.cpp
     ${SRC_DIR}KoonDriver.cpp)
 
 BISON_TARGET(Parser ${SRC_DIR}parser.y ${CMAKE_CURRENT_BINARY_DIR}/parser.cpp)

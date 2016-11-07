@@ -47,7 +47,10 @@
     RBRACE  "}"
     DECL    "decl"
     RET     "return"
+    CLASS   "class"
+    VAR     "var"
     RARROW  "->"
+    DOT     "."
     PIPE    "|"
 ;
 
@@ -55,9 +58,12 @@
 %token  <std::string>   COLID       "colid"
 %token  <int>           NUMBER      "number"
 %type   <KBlock>        stmts block
-%type   <std::shared_ptr<KStatement>>    stmt
+%type   <std::shared_ptr<KStatement>>    stmt func_or_obj
+%type   <std::shared_ptr<KObjField>>    obj_component
+%type   <KObjectDecl>   obj_decl
 %type   <KFuncDecl>     func_decl
-%type   <KFuncList>     toplevel
+%type   <KTopLevel>     toplevel
+%type   <KObjFieldList> obj_block
 %type   <KIdentifier>   return_type
 %type   <KArg>          arg
 %type   <KCallArg>      carg
@@ -66,6 +72,7 @@
 %type   <std::shared_ptr<KExpression>>   expr
 %type   <KReturnStatement>  return_statement
 %type   <KVarDecl>      var_decl
+%type   <std::shared_ptr<KOperator>>     operator
 
 /*
 %printer {} <KBlock>;
@@ -84,11 +91,30 @@ program:
 ;
 
 toplevel:
-    func_decl   {
-        $$ = KFuncList();
-        $$.emplace_back(std::move($1));
-    }
-|   toplevel func_decl { $1.emplace_back(std::move($2)); $$ = std::move($1); }
+    func_or_obj         { $$ = KTopLevel(); $$.emplace_back(std::move($1)); }
+|   toplevel func_or_obj { $1.emplace_back(std::move($2)); $$ = std::move($1); }
+;
+
+func_or_obj:
+    func_decl   { $$ = std::make_shared<KFuncDecl>(std::move($1)); }
+|   obj_decl    { $$ = std::make_shared<KObjectDecl>(std::move($1)); }
+;
+
+obj_decl:
+    "class" "identifier" "{" obj_block "}" { $$ = KObjectDecl(std::move($2), std::move($4), driver.kontext()); }
+;
+
+obj_block:
+    obj_component           { $$ = KObjFieldList(); $$.emplace_back(std::move($1)); }
+|   obj_block obj_component { $$ = $1; $$.emplace_back(std::move($2)); }
+;
+
+obj_component:
+    /* blank */ { $$ = nullptr; }
+|   func_decl   { $$ = std::make_shared<KFuncDecl>(std::move($1)); }
+|   obj_decl    { $$ = std::make_shared<KObjectDecl>(std::move($1)); }
+|   var_decl    { $$ = std::make_shared<KVarDecl>(std::move($1)); $$->setInObj(); }
+;
 
 stmts:
     stmt        {
@@ -106,9 +132,9 @@ stmt:
 ;
 
 var_decl:
-    "identifier" "=" expr { $$ = KVarDecl(std::move($1), std::move($3)); }
-|   "colid" "identifier" { $1.pop_back();$$ = KVarDecl(std::move($1), std::move($2)); }
-|   "colid" "identifier" "=" expr { $1.pop_back();$$ = KVarDecl(std::move($1), std::move($2), std::move($4)); }
+    "var" "identifier" "=" expr { $$ = KVarDecl(std::move($2), std::move($4)); }
+|   "var" "colid" "identifier" { $2.pop_back();$$ = KVarDecl(std::move($2), std::move($3)); }
+|   "var" "colid" "identifier" "=" expr { $2.pop_back();$$ = KVarDecl(std::move($2), std::move($3), std::move($5)); }
 ;
 
 return_statement:
@@ -117,9 +143,18 @@ return_statement:
 ;
 
 expr:
-    "|" "identifier" call_args "|" { $$ = std::make_shared<KFuncCall>(std::move($2), std::move($3)); }
+    "|" expr call_args "|" { $$ = std::make_shared<KFuncCall>(std::move($2), std::move($3)); }
+|   operator        { $$ = std::move($1); }
 |   "identifier"    { $$ = std::make_shared<KIdentifier>(std::move($1)); }
 |   "number"        { $$ = std::make_shared<KInt>($1); }
+;
+
+operator:
+    expr "*" expr   { $$ = std::make_shared<KBinaryOperator>(std::move($1), std::move($3), KOperator::Type::Mul); }
+|   expr "/" expr   { $$ = std::make_shared<KBinaryOperator>(std::move($1), std::move($3), KOperator::Type::Div); }
+|   expr "+" expr   { $$ = std::make_shared<KBinaryOperator>(std::move($1), std::move($3), KOperator::Type::Add); }
+|   expr "-" expr   { $$ = std::make_shared<KBinaryOperator>(std::move($1), std::move($3), KOperator::Type::Sub); }
+|   expr "=" expr   { $$ = std::make_shared<KBinaryOperator>(std::move($1), std::move($3), KOperator::Type::Equal); }
 ;
 
 call_args:
@@ -129,7 +164,7 @@ call_args:
 
 inner_call_args:
     carg            { $$ = KCallArgList(); $$.push_back(std::move($1)); }
-|   call_args carg  { $1.push_back(std::move($2)); }
+|   inner_call_args carg  { $1.push_back(std::move($2)); }
 ;
 
 carg:
@@ -142,7 +177,7 @@ block:
 
 func_decl:
     "decl" arg_list return_type block
-        { $$ = KFuncDecl(std::move($3), std::move($2), std::move($4), driver.module()); }
+        { $$ = KFuncDecl(std::move($3), std::move($2), std::move($4), driver.kontext()); }
 ;
 
 arg_list:

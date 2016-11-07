@@ -33,10 +33,13 @@ blank   [ \t ]
 ")"         return yy::KoonParser::make_RPAREN(loc);
 "="         return yy::KoonParser::make_ASSIGN(loc);
 "->"        return yy::KoonParser::make_RARROW(loc);
+"."         return yy::KoonParser::make_DOT(loc);
 "{"         return yy::KoonParser::make_LBRACE(loc);
 "}"         return yy::KoonParser::make_RBRACE(loc);
 "decl"      return yy::KoonParser::make_DECL(loc);
 "return"    return yy::KoonParser::make_RET(loc);
+"class"     return yy::KoonParser::make_CLASS(loc);
+"var"       return yy::KoonParser::make_VAR(loc);
 "|"         return yy::KoonParser::make_PIPE(loc);
 
 {int}      {

@@ -4,8 +4,8 @@
 
 static llvm::cl::opt<std::string>
 InputFilename(  llvm::cl::Positional,
-                llvm::cl::desc("<input file>"),
-                llvm::cl::init("-"));
+                llvm::cl::Required,
+                llvm::cl::desc("<input file>"));
 
 int main(int argc, char *argv[]) {
     llvm::cl::ParseCommandLineOptions(argc, argv, "koon kompiler\n");
