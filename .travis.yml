@@ -18,10 +18,10 @@ cache:
 
 matrix:
     include:
-        - os: osx
+        - os: linux
           env: UNIT_TEST=true COMPILER=g++-6
 
-        - os: linux
+        - os: osx
           env: UNIT_TEST=true COMPILER=g++-6
 
 before_install:
@@ -56,7 +56,7 @@ install:
       mkdir -p ${LLVM_DIR} ${LLVM_DIR}/build
       travis_retry wget --quiet -O - ${LLVM_URL}      | tar --strip-components=1 -xJ -C ${LLVM_DIR}
       if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-        (pushd ${LLVM_DIR}/build && cmake .. -DLLVM_ENABLE_RTTI=true -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${LLVM_DIR}/install && make -j2 && make install && popd)
+        (pushd ${LLVM_DIR}/build && cmake .. -DLLVM_ENABLE_RTTI=false -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${LLVM_DIR}/install && make -j2 && make install && popd)
       else
         (pushd ${LLVM_DIR}/build && cmake .. -DLLVM_ENABLE_RTTI=true -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${LLVM_DIR}/install -DCMAKE_CXX_COMPILER=$COMPILER && make -j2 && make install && popd)
       fi

@@ -4,9 +4,10 @@ decl start -> Integer {
 }
 
 class Toto {
-    var lol = 5
+    var lol = 93270
 
     decl doStuff stuff: Integer -> Integer {
+    	|lol print|
         return lol + stuff
     }
 }

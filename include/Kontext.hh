@@ -117,6 +117,7 @@ public:
 private:
     void createInteger();
     void createIntegerAdd();
+    void createIntegerPrint();
 
 protected:
     llvm::Module*           _module;

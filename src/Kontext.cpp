@@ -2,6 +2,20 @@
 #include "InstanciatedObject.hh"
 
 void Kontext::createBuiltins() {
+    std::vector<llvm::Type*> printf_arg_types;
+    printf_arg_types.push_back(llvm::Type::getInt8PtrTy(llvm::getGlobalContext())); //char*
+
+    llvm::FunctionType* printf_type =
+        llvm::FunctionType::get(
+            llvm::Type::getInt32Ty(llvm::getGlobalContext()), printf_arg_types, true);
+
+    llvm::Function *func = llvm::Function::Create(
+                printf_type, llvm::Function::ExternalLinkage,
+                llvm::Twine("printf"),
+                this->_module
+           );
+    func->setCallingConv(llvm::CallingConv::C);
+    
 	createInteger();
 }
 
@@ -57,6 +71,7 @@ void Kontext::createInteger() {
     this->popBlock();
 
     this->createIntegerAdd();
+    this->createIntegerPrint();
 
 	this->popObject();
 }
@@ -103,5 +118,54 @@ void Kontext::createIntegerAdd() {
                 new llvm::LoadInst(object->get(*this), "", false, this->currentBlock()),
                 bBlock);
 
+    this->popBlock();
+}
+
+void Kontext::createIntegerPrint() {
+    std::vector<llvm::Type *> argTypes;
+
+    argTypes.emplace_back(this->_types["Integer"].type()->getPointerTo());
+
+    auto fType = llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), makeArrayRef(argTypes), false);
+    auto func = llvm::Function::Create(fType,
+            llvm::GlobalValue::ExternalLinkage,
+            "Integer_print",
+            this->module());
+
+    auto bBlock = llvm::BasicBlock::Create(llvm::getGlobalContext(),
+                    "entry",
+                    func,
+                    nullptr);
+
+    this->pushBlock(bBlock);
+
+    auto argIter = func->arg_begin();
+
+    auto obj = InstanciatedObject::Create("self", &(*argIter), *this, KCallArgList());
+    (*argIter).setName("self");
+    obj->store(*this);
+
+    const char *constValue = "%d\n";
+    llvm::Constant *format_const = llvm::ConstantDataArray::getString(llvm::getGlobalContext(), constValue);
+    llvm::GlobalVariable *var =
+        new llvm::GlobalVariable(
+            *_module, llvm::ArrayType::get(llvm::IntegerType::get(llvm::getGlobalContext(), 8), strlen(constValue)+1),
+            true, llvm::GlobalValue::PrivateLinkage, format_const, ".str");
+    llvm::Constant *zero =
+        llvm::Constant::getNullValue(llvm::IntegerType::getInt32Ty(llvm::getGlobalContext()));
+
+    std::vector<llvm::Constant*> indices;
+    indices.push_back(zero);
+    indices.push_back(zero);
+    llvm::Constant *var_ref = llvm::ConstantExpr::getGetElementPtr(
+    llvm::ArrayType::get(llvm::IntegerType::get(llvm::getGlobalContext(), 8), 4),
+        var, indices);
+
+    std::vector<llvm::Value*> args;
+    args.push_back(var_ref);
+    args.push_back(new llvm::LoadInst(obj->getStructElem(*this, "innerInt"), "", false, this->currentBlock()));
+
+    auto call = llvm::CallInst::Create(_module->getFunction("printf"), llvm::makeArrayRef(args), "", bBlock);
+    llvm::ReturnInst::Create(llvm::getGlobalContext(), bBlock);
     this->popBlock();
 }
