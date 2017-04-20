@@ -4,16 +4,17 @@
 #include <llvm/IR/Constants.h>
 #include "Nodes.hh"
 #include "InstanciatedObject.hh"
-#include <Kontext.hh>
-
-static std::unordered_map<std::string, llvm::Type*> g_types = {
-    { "void",       llvm::Type::getVoidTy(llvm::getGlobalContext()) },
-    { "none",       llvm::Type::getVoidTy(llvm::getGlobalContext()) },
-    { "double",     llvm::Type::getDoubleTy(llvm::getGlobalContext()) }
-};
+#include "Mangler.hh"
+#include "Kontext.hh"
 
 llvm::Type *Kontext::type_of(const std::string &type) {
     using namespace llvm;
+
+    static std::unordered_map<std::string, llvm::Type*> g_types = {
+        { "void",       llvm::Type::getVoidTy(this->getContext()) },
+        { "none",       llvm::Type::getVoidTy(this->getContext()) },
+        { "double",     llvm::Type::getDoubleTy(this->getContext()) }
+    };
 
     Type *retType = g_types[type];
     if (!retType) retType = this->_types[type].type();
@@ -45,7 +46,7 @@ llvm::Type* KIdentifier::getType(Kontext &kontext) {
 }
 
 ValuePtr KBinaryOperator::codeGen(Kontext &k) {
-    return KFuncCall(_lhs, KCallArgList(1, KCallArg("operator+", _rhs->codeGen(k)))).codeGen(k);
+    return KFuncCall(_lhs, KCallArgList(1, KCallArg(_opType, _rhs->codeGen(k)))).codeGen(k);
 }
 
 llvm::Type* KBinaryOperator::getType(Kontext &) {
@@ -72,7 +73,7 @@ ValuePtr KArg::codeGen(Kontext &kontext) {
 ValuePtr KInt::codeGen(Kontext &kontext) {
     auto type = kontext.type_of("Integer");
     auto object = InstanciatedObject::Create("temp", type, kontext, KCallArgList(1, KCallArg("Integer", llvm::ConstantInt::get(
-            llvm::Type::getInt32Ty(llvm::getGlobalContext()),
+            llvm::Type::getInt32Ty(kontext.getContext()),
             _inner, true))));
     return  object->get(kontext);
 }
@@ -105,13 +106,22 @@ ValuePtr KFuncCall::codeGen(Kontext &kontext) {
     std::string objName;
     /* TODO: Push toplevel `object` to remove if */
     if (kontext.isSystemObject(_object)) {
-        function = kontext.module()->getFunction(_args[0].getName().c_str());
+        std::vector<std::string> ids;
+        ids.emplace_back(_args[0].getName());
+        Mangler m;
+        function = kontext.module()->getFunction(m.mangle(ids).c_str());
         objName = "TopLevel";
     } else {
         auto val = _object->codeGen(kontext);
         llvm::Type* t = val->getType();
         while (!t->isStructTy()) t = t->getPointerElementType();
-        function = kontext.module()->getFunction(t->getStructName().str() + "_" + _args[0].getName());
+        std::vector<std::string> ids;
+        ids.emplace_back(t->getStructName().str());
+        ids.emplace_back(_args[0].getName());
+        Mangler m;
+        auto lel = m.mangle(ids);
+        std::cout << "trying: " << lel << std::endl;
+        function = kontext.module()->getFunction(lel);
 
         _args.emplace(_args.cbegin(), "self", val);
         objName = t->getStructName();
@@ -186,6 +196,11 @@ KFuncDecl::KFuncDecl(KIdentifier &&type, KArgList &&args, KBlock &&block, Kontex
         }
         fType = FunctionType::get(_k->type_of(_type.getName()), makeArrayRef(argTypes), false);
     }
+    std::vector<std::string> ids;
+    ids.emplace_back(_args[0].getCallName());
+    Mangler m;
+    auto l = m.mangle(ids);
+    std::cout << "generate: " << l << std::endl;
     this->me = Function::Create(fType,
             GlobalValue::ExternalLinkage,
             _args[0].getCallName().c_str(),
@@ -197,7 +212,9 @@ void KFuncDecl::remangle(const KObject &parent) {
 
     this->me->removeFromParent();
     FunctionType* fType = nullptr;
-    std::string name = _args[0].getCallName();
+    std::vector<std::string> ids;
+    ids.emplace_back(parent.name());
+    ids.emplace_back(_args[0].getCallName());
     if (_args[0].getType() == "none")
         _args.erase(_args.cbegin());
     _args.emplace(_args.cbegin(), KArg(KIdentifier("self"), std::string(parent.type()->getStructName())));
@@ -209,16 +226,19 @@ void KFuncDecl::remangle(const KObject &parent) {
         }
         fType = FunctionType::get(_k->type_of(_type.getName()), makeArrayRef(argTypes), false);
     }
+    Mangler m;
+    auto lel = m.mangle(ids);
+    std::cout << "regen: " << lel << std::endl;
     this->me = Function::Create(fType,
             GlobalValue::ExternalLinkage,
-            (parent.name() + "_" + name).c_str(),
+            lel,
             _k->module());
 }
 
 ValuePtr KFuncDecl::codeGen(Kontext &kontext) {
     using namespace llvm;
 
-    auto leBlock = BasicBlock::Create(getGlobalContext(),
+    auto leBlock = BasicBlock::Create(kontext.getContext(),
                     "entry",
                     this->me,
                     nullptr);
@@ -235,7 +255,7 @@ ValuePtr KFuncDecl::codeGen(Kontext &kontext) {
 
     _block.codeGen(kontext);
 
-    ReturnInst::Create(getGlobalContext(),
+    ReturnInst::Create(kontext.getContext(),
                 kontext.getCurrentReturnValue(),
                 leBlock);
 
@@ -258,7 +278,7 @@ KObjectDecl::KObjectDecl(std::string &&name, KObjFieldList &&stmts, Kontext *kon
         leBlock.emplaceStatement(field);
     }
 
-    auto leType = StructType::create(getGlobalContext(), makeArrayRef(types), _name, false);
+    auto leType = StructType::create(kontext->getContext(), makeArrayRef(types), _name, false);
 
     KObject o(_name, leType, std::move(attributes));
     kontext->addType(_name, o);
@@ -270,7 +290,7 @@ KObjectDecl::KObjectDecl(std::string &&name, KObjFieldList &&stmts, Kontext *kon
     auto f = kontext->module()->getFunction((_name + "_" + _name));
     if (!f) {
         _ctor = std::make_shared<KFuncDecl>(KIdentifier("void"),
-                                            KArgList(1, KArg(KIdentifier(std::string(_name)), KIdentifier("none"))),
+                                            KArgList(1, KArg(KIdentifier(std::string("ctor")), KIdentifier("none"))),
                                             std::move(leBlock), kontext);
         _ctor->remangle(o);
     }

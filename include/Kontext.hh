@@ -7,7 +7,6 @@
 #include <llvm/IR/Instructions.h> /*TMP */
 #include <llvm/IR/Constants.h> /*TMP */
 
-#include "Mangler.hh"
 #include "KFuncDecl.hh"
 
 class InstanciatedObject;
@@ -65,7 +64,7 @@ private:
 class Kontext {
 public:
     inline Kontext()
-    : _module(new llvm::Module("main", llvm::getGlobalContext())) {}
+    : _module(new llvm::Module("main", this->_context)) {}
 
 public:
     llvm::Type*                 type_of(const std::string &);
@@ -80,8 +79,8 @@ public:
         idx = _types[t->getStructName()].attr(name);
         if (idx == std::numeric_limits<size_t>::max()) return nullptr;
         std::vector<llvm::Value*> vec {
-            llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvm::getGlobalContext()), 0, false),
-            llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvm::getGlobalContext()), idx, false)
+            llvm::ConstantInt::get(llvm::Type::getInt32Ty(this->getContext()), 0, false),
+            llvm::ConstantInt::get(llvm::Type::getInt32Ty(this->getContext()), idx, false)
         };
         return llvm::GetElementPtrInst::CreateInBounds(str, vec, name.c_str(), this->currentBlock());
     }
@@ -110,9 +109,9 @@ public:
     inline void setObject(std::string const &oName) { _current = &_types[oName]; }
     inline void popObject() { _current = nullptr; }
 
-    void createBuiltins();
+    inline llvm::LLVMContext& getContext() { return _module->getContext(); }
 
-    Mangler                 mangler;
+    void createBuiltins();
 
 private:
     void createInteger();
@@ -120,6 +119,7 @@ private:
     void createIntegerPrint();
 
 protected:
+    llvm::LLVMContext       _context;
     llvm::Module*           _module;
     std::stack<KodeBlock*>  _blocks;
     std::unordered_map<std::string, KObject>      _types;

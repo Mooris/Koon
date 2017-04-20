@@ -78,15 +78,11 @@ private:
 #include "KIdentifier.hh"
 
 class KOperator: public KExpression {
+    template <class E>
+    static constexpr auto ce(E &&e) noexcept {
+        return static_cast<std::underlying_type_t<E>>(std::forward<E>(e));
+    }
 public:
-    enum class Type {
-        Mul,
-        Div,
-        Add,
-        Sub,
-        Dot,
-        Equal
-    };
     virtual ~KOperator() {}
 
     /* For bison */
@@ -100,8 +96,8 @@ class KBinaryOperator: public KOperator {
 public:
     KBinaryOperator(std::shared_ptr<KExpression> lhs,
                     std::shared_ptr<KExpression> rhs,
-                    Type type)
-        : _lhs(std::move(lhs)), _rhs(std::move(rhs)), _type(type) {}
+                    std::string opType)
+        : _lhs(std::move(lhs)), _rhs(std::move(rhs)), _opType(opType) {}
     virtual ~KBinaryOperator() {}
 
 public:
@@ -113,7 +109,7 @@ public:
 private:
     std::shared_ptr<KExpression>    _lhs;
     std::shared_ptr<KExpression>    _rhs;
-    Type                            _type;
+    std::string                     _opType;
 };
 
 class KBlock: public KNode {

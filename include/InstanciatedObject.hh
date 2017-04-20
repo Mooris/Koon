@@ -49,7 +49,7 @@ public:
 	Object(std::string name, llvm::Type *t, Kontext& k, KCallArgList list)
 		: InstanciatedObject(std::move(name), t, k)
 		{
-			list.emplace(list.cbegin(), KCallArg(_type->getStructName(), nullptr));
+			list.emplace(list.cbegin(), KCallArg("ctor", nullptr));
 
             KFuncCall(std::make_shared<KIdentifier>(std::string(_name)), std::move(list)).codeGen(k);
 		}

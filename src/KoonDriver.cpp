@@ -49,7 +49,8 @@ int KoonDriver::parse(const std::string &f)
         if (ShowAssembly) {
             llvm::PassManager<llvm::Module> pm;
             pm.addPass(llvm::PrintModulePass(llvm::outs()));
-            pm.run(*this->module());
+            auto toto = llvm::AnalysisManager<llvm::Module>();
+            pm.run(*this->module(), toto);
         }
         return this->output();
     }

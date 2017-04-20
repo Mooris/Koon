@@ -57,6 +57,7 @@
 %token  <std::string>   IDENTIFIER  "identifier"
 %token  <std::string>   COLID       "colid"
 %token  <int>           NUMBER      "number"
+%type   <std::string>   innerOP
 %type   <KBlock>        stmts block
 %type   <std::shared_ptr<KStatement>>    stmt func_or_obj
 %type   <std::shared_ptr<KObjField>>    obj_component
@@ -150,11 +151,15 @@ expr:
 ;
 
 operator:
-    expr "*" expr   { $$ = std::make_shared<KBinaryOperator>(std::move($1), std::move($3), KOperator::Type::Mul); }
-|   expr "/" expr   { $$ = std::make_shared<KBinaryOperator>(std::move($1), std::move($3), KOperator::Type::Div); }
-|   expr "+" expr   { $$ = std::make_shared<KBinaryOperator>(std::move($1), std::move($3), KOperator::Type::Add); }
-|   expr "-" expr   { $$ = std::make_shared<KBinaryOperator>(std::move($1), std::move($3), KOperator::Type::Sub); }
-|   expr "=" expr   { $$ = std::make_shared<KBinaryOperator>(std::move($1), std::move($3), KOperator::Type::Equal); }
+    expr innerOP expr   { $$ = std::make_shared<KBinaryOperator>(std::move($1), std::move($3), "operator" + $2); }
+;
+
+innerOP:
+    "*" { $$ = "*"; }
+|   "/" { $$ = "/"; }
+|   "+" { $$ = "+"; }
+|   "-" { $$ = "-"; }
+|   "=" { $$ = "="; }
 ;
 
 call_args:
@@ -182,6 +187,7 @@ func_decl:
 
 arg_list:
     "identifier"        { $$ = KArgList(); $$.emplace_back(std::move($1), KIdentifier("none")); }
+|   "identifier" innerOP { $$ = KArgList(); $$.emplace_back($1 + $2, KIdentifier("none")); }
 |   inner_arg_list      { $$ = std::move($1); }
 ;
 
@@ -196,6 +202,8 @@ inner_arg_list:
 arg:
     "colid" "identifier"    { $1.pop_back();$$ = KArg(std::move($1), std::move($2)); }
 |   "identifier" "colid" "identifier" { $2.pop_back();$$ = KArg(std::move($2), std::move($3), std::move($1)); }
+|   "colid" innerOP "identifier"    { $1.pop_back();$$ = KArg($1 + $2, std::move($3)); }
+|   "identifier" innerOP "colid" "identifier" { $3.pop_back();$$ = KArg(std::move($3), std::move($4), $1 + $2); }
 ;
 
 return_type:

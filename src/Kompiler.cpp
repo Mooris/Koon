@@ -161,7 +161,7 @@ int Kompiler::compile(Module &theModule) {
                                         CPUStr,
                                         FeaturesStr,
                                         laOptions,
-                                        RelocModel,
+                                        llvm::Optional<llvm::Reloc::Model>(RelocModel),
                                         CMModel,
                                         OLvl));
 
