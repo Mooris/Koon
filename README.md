@@ -4,7 +4,7 @@
 
 ## TODO:
 
-### in Koon:
+#### in Koon:
 * control flow
   * If
   * While
@@ -13,6 +13,6 @@
 * multiple files
 * constness
 
-### in Code:
+#### in Code:
 * constness
 * refactor shit
