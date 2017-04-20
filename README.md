@@ -1,3 +1,18 @@
-# Koon
+<p align="center">
+  <img src="Koon.png" alt="Koon logo"/>
+</p>
 
-![alt tag](Koon.png)
+## TODO:
+
+### in Koon:
+* control flow
+  * If
+  * While
+* rvo (ish)
+* dereference structs
+* multiple files
+* constness
+
+### in Code:
+* constness
+* refactor shit
